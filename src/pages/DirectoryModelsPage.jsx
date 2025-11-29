@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 export default function DirectoryModelsPage() {
   const params = useParams()
   console.log('Params:', params)
-  const id = params.directoryId
+  const id = params.id
   console.log('ID:', id)
   const navigate = useNavigate()
   const { isAdmin, getAuthHeaders } = useAuth()
