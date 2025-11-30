@@ -47,7 +47,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="bg-white border-t py-4">
-        <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">© 2024 BIM Monitor</div>
+        <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">© 2026 BIM Monitor</div>
       </footer>
     </div>
   )

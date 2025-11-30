@@ -18,21 +18,23 @@ export default function DirectoriesPage() {
     loadData()
   }, [])
 
-  const loadData = async () => {
-    try {
-      const [dirs, st] = await Promise.all([
-        directoriesAPI.getAll(),
-        statsAPI.getOverall()
-      ])
-      setDirectories(dirs)
-      setStats(st)
-    } catch (err) {
-      console.error('Load error:', err)
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+const loadData = async () => {
+  try {
+    const [dirs, st] = await Promise.all([
+      directoriesAPI.getAll(),
+      statsAPI.getOverall()
+    ])
+    console.log('Directories raw:', dirs)
+    console.log('First dir:', dirs[0])
+    setDirectories(dirs)
+    setStats(st)
+  } catch (err) {
+    console.error('Load error:', err)
+    setError(err.message)
+  } finally {
+    setLoading(false)
   }
+}
 
   const filteredAndSorted = useMemo(() => {
     let result = [...directories]

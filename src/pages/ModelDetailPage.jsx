@@ -13,7 +13,7 @@ const SECTIONS = [
 ]
 
 export default function ModelDetailPage() {
-  const { directoryId: dirId, modelId, section = 'axes' } = useParams()
+  const { id: dirId, modelId, section = 'axes' } = useParams()
   const navigate = useNavigate()
   const { isAdmin, getAuthHeaders } = useAuth()
   const [model, setModel] = useState(null)
@@ -36,24 +36,26 @@ const loadModel = async () => {
   }
 }
 
-  const handleDelete = async () => {
-    if (!confirm('Удалить модель? Все результаты проверок будут удалены.')) return
-    try {
-      await modelsAPI.delete(modelId, getAuthHeaders())
-      navigate(`/directory/${dirId}`)
-    } catch (err) {
-      alert('Ошибка удаления: ' + err.message)
-    }
+const handleDelete = async () => {
+  if (!confirm('Удалить модель? Все результаты проверок будут удалены.')) return
+  try {
+    await modelsAPI.delete(modelId, getAuthHeaders())
+    navigate(`/directory/${model.directory_id || dirId}`)
+  } catch (err) {
+    alert('Ошибка удаления: ' + err.message)
   }
+}
+
+const changeSection = (newSection) => {
+  navigate(`/directory/${model.directory_id || dirId}/model/${modelId}/${newSection}`)
+}
 
   const copyLink = () => {
     navigator.clipboard.writeText(window.location.href)
     alert('Ссылка скопирована!')
   }
 
-  const changeSection = (newSection) => {
-    navigate(`/directory/${dirId}/model/${modelId}/${newSection}`)
-  }
+
 
   if (loading) {
     return (
@@ -72,8 +74,9 @@ const loadModel = async () => {
       <nav className="flex items-center gap-2 text-sm text-gray-500 mb-4">
         <Link to="/" className="hover:text-blue-600">Все директории</Link>
         <span>/</span>
-        <Link to={`/directory/${dirId}`} className="hover:text-blue-600">{model.directory_code}</Link>
-        <span>/</span>
+        <Link to={`/directory/${model.directory_id || dirId}`} className="hover:text-blue-600">
+  {model.directory_name || model.directory_code}
+</Link><span>/</span>
         <span className="text-gray-900">{model.model_name}</span>
       </nav>
       <div className="flex items-center justify-between mb-6">
