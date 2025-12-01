@@ -94,7 +94,7 @@ export default function DirectoriesPage() {
 
   const totalAxisErrors = stats?.axis_total_errors || 0
   const totalLevelErrors = stats?.level_total_errors || 0
-  const totalErrors = totalAxisErrors + totalLevelErrors
+  const totalErrors = +totalAxisErrors + +totalLevelErrors
 
   return (
     <div>
