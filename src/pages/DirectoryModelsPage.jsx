@@ -5,9 +5,7 @@ import { useAuth } from '../context/AuthContext'
 
 export default function DirectoryModelsPage() {
   const params = useParams()
-  console.log('Params:', params)
   const id = params.id
-  console.log('ID:', id)
   const navigate = useNavigate()
   const { isAdmin, getAuthHeaders } = useAuth()
   const [directory, setDirectory] = useState(null)
@@ -15,28 +13,23 @@ export default function DirectoryModelsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (id) {
-      loadData()
-    }
+    if (id) loadData()
   }, [id])
 
-const loadData = async () => {
-  console.log('Loading directory id:', id)
-  try {
-    const [dir, mods] = await Promise.all([
-      directoriesAPI.getById(id), 
-      directoriesAPI.getModels(id)
-    ])
-    console.log('Directory:', dir)
-    console.log('Models:', mods)
-    setDirectory(dir)
-    setModels(mods)
-  } catch (err) {
-    console.error('Error:', err)
-  } finally {
-    setLoading(false)
+  const loadData = async () => {
+    try {
+      const [dir, mods] = await Promise.all([
+        directoriesAPI.getById(id),
+        directoriesAPI.getModels(id)
+      ])
+      setDirectory(dir)
+      setModels(mods)
+    } catch (err) {
+      console.error('Error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   const handleDelete = async (modelId, e) => {
     e.stopPropagation()
@@ -47,6 +40,11 @@ const loadData = async () => {
     } catch (err) {
       alert('Ошибка удаления: ' + err.message)
     }
+  }
+
+  const getStatusColor = (hasAxisErrors, hasLevelErrors) => {
+    if (hasAxisErrors || hasLevelErrors) return 'bg-red-400'
+    return 'bg-green-400'
   }
 
   if (loading) {
@@ -67,9 +65,14 @@ const loadData = async () => {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Модели в директории</h1>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {models.map(model => {
-          const hasErrors = model.error_count > 0
-          const total = model.total_axes_in_model || 0
-          const successRate = total > 0 ? Math.round((model.success_count / total) * 100) : 0
+          const hasAxisErrors = model.axis_error_count > 0
+          const hasLevelErrors = model.level_error_count > 0
+          const axisTotal = model.total_axes_in_model || 0
+          const levelTotal = model.total_levels_in_model || 0
+          const axisSuccessRate = axisTotal > 0 ? Math.round((model.axis_success_count / axisTotal) * 100) : 0
+          const levelSuccessRate = levelTotal > 0 ? Math.round((model.level_success_count / levelTotal) * 100) : 0
+          const latestCheck = model.axis_check_date || model.level_check_date
+          
           return (
             <div key={model.id} onClick={() => navigate(`/directory/${id}/model/${model.id}`)} className="bg-white rounded-lg p-4 shadow-sm border cursor-pointer hover:shadow-md transition-shadow relative">
               {isAdmin && (
@@ -81,22 +84,52 @@ const loadData = async () => {
               )}
               <div className="flex items-start justify-between mb-2">
                 <h3 className="font-semibold text-gray-900 truncate flex-1 pr-6">{model.model_name}</h3>
-                <span className={`w-3 h-3 rounded-full ${hasErrors ? 'bg-red-400' : 'bg-green-400'}`}></span>
+                <span className={`w-3 h-3 rounded-full ${getStatusColor(hasAxisErrors, hasLevelErrors)}`}></span>
               </div>
-              {model.check_date && (
-                <div className="text-sm text-gray-500 mb-3">Проверка: {new Date(model.check_date).toLocaleString('ru-RU')}</div>
+              
+              {latestCheck && (
+                <div className="text-sm text-gray-500 mb-3">
+                  Проверка: {new Date(latestCheck).toLocaleString('ru-RU')}
+                </div>
               )}
-              {total > 0 && (
-                <>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                    <div className={`h-2 rounded-full ${hasErrors ? 'bg-yellow-400' : 'bg-green-400'}`} style={{ width: `${successRate}%` }}></div>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-green-600">{model.success_count} ок</span>
-                    <span className="text-red-600">{model.error_count} ошибок</span>
-                  </div>
-                </>
-              )}
+
+              <div className="space-y-3">
+                {/* Оси */}
+                <div className="border-t pt-2">
+                  <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Оси</div>
+                  {axisTotal > 0 ? (
+                    <>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                        <div className={`h-1.5 rounded-full ${hasAxisErrors ? 'bg-yellow-400' : 'bg-green-400'}`} style={{ width: `${axisSuccessRate}%` }}></div>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-green-600">{model.axis_success_count} ок</span>
+                        <span className="text-red-600">{model.axis_error_count} ошибок</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-xs text-gray-400">Нет данных</div>
+                  )}
+                </div>
+
+                {/* Уровни */}
+                <div className="border-t pt-2">
+                  <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Уровни</div>
+                  {levelTotal > 0 ? (
+                    <>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                        <div className={`h-1.5 rounded-full ${hasLevelErrors ? 'bg-yellow-400' : 'bg-green-400'}`} style={{ width: `${levelSuccessRate}%` }}></div>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-green-600">{model.level_success_count} ок</span>
+                        <span className="text-red-600">{model.level_error_count} ошибок</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-xs text-gray-400">Нет данных</div>
+                  )}
+                </div>
+              </div>
             </div>
           )
         })}

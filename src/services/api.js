@@ -52,6 +52,10 @@ export const modelsAPI = {
     const res = await api.get(`/models/${id}/check-report`)
     return res.data
   },
+  getLevelsReport: async (id) => {
+    const res = await api.get(`/models/${id}/levels-report`)
+    return res.data
+  },
   getCheckHistory: async (id) => {
     const res = await api.get(`/models/${id}/check-history`)
     return res.data

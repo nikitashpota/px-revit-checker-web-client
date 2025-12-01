@@ -18,32 +18,28 @@ export default function DirectoriesPage() {
     loadData()
   }, [])
 
-const loadData = async () => {
-  try {
-    const [dirs, st] = await Promise.all([
-      directoriesAPI.getAll(),
-      statsAPI.getOverall()
-    ])
-    console.log('Directories raw:', dirs)
-    console.log('First dir:', dirs[0])
-    setDirectories(dirs)
-    setStats(st)
-  } catch (err) {
-    console.error('Load error:', err)
-    setError(err.message)
-  } finally {
-    setLoading(false)
+  const loadData = async () => {
+    try {
+      const [dirs, st] = await Promise.all([
+        directoriesAPI.getAll(),
+        statsAPI.getOverall()
+      ])
+      setDirectories(dirs)
+      setStats(st)
+    } catch (err) {
+      console.error('Load error:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   const filteredAndSorted = useMemo(() => {
     let result = [...directories]
-    
     if (search.trim()) {
       const searchLower = search.toLowerCase()
       result = result.filter(d => d.name.toLowerCase().includes(searchLower))
     }
-    
     result.sort((a, b) => {
       let compareA, compareB
       switch (sortBy) {
@@ -60,8 +56,8 @@ const loadData = async () => {
           compareB = b.total_models
           break
         case 'errors':
-          compareA = a.error_models
-          compareB = b.error_models
+          compareA = (a.axis_error_models || 0) + (a.level_error_models || 0)
+          compareB = (b.axis_error_models || 0) + (b.level_error_models || 0)
           break
         default:
           return 0
@@ -70,7 +66,6 @@ const loadData = async () => {
       if (compareA > compareB) return sortOrder === 'asc' ? 1 : -1
       return 0
     })
-    
     return result
   }, [directories, search, sortBy, sortOrder])
 
@@ -80,15 +75,6 @@ const loadData = async () => {
   useEffect(() => {
     setPage(1)
   }, [search, sortBy, sortOrder])
-
-  const toggleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortBy(field)
-      setSortOrder('asc')
-    }
-  }
 
   if (loading) {
     return (
@@ -106,6 +92,10 @@ const loadData = async () => {
     )
   }
 
+  const totalAxisErrors = stats?.axis_total_errors || 0
+  const totalLevelErrors = stats?.level_total_errors || 0
+  const totalErrors = totalAxisErrors + totalLevelErrors
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Директории</h1>
@@ -121,11 +111,13 @@ const loadData = async () => {
             <div className="text-sm text-gray-500">Моделей</div>
           </div>
           <div className="bg-white rounded-lg p-4 shadow-sm border">
-            <div className="text-2xl font-bold text-yellow-600">{stats.models_with_errors}</div>
+            <div className="text-2xl font-bold text-yellow-600">
+              {(stats.axis_models_with_errors || 0) + (stats.level_models_with_errors || 0)}
+            </div>
             <div className="text-sm text-gray-500">С ошибками</div>
           </div>
           <div className="bg-white rounded-lg p-4 shadow-sm border">
-            <div className="text-2xl font-bold text-red-600">{stats.total_errors}</div>
+            <div className="text-2xl font-bold text-red-600">{totalErrors}</div>
             <div className="text-sm text-gray-500">Всего ошибок</div>
           </div>
         </div>
@@ -148,27 +140,16 @@ const loadData = async () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 border rounded-lg text-sm"
-            >
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-3 py-2 border rounded-lg text-sm">
               <option value="name">По названию</option>
               <option value="date">По дате</option>
               <option value="models">По кол-ву моделей</option>
               <option value="errors">По ошибкам</option>
             </select>
-            <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-50"
-            >
+            <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-50">
               {sortOrder === 'asc' ? '↑' : '↓'}
             </button>
-            <select
-              value={perPage}
-              onChange={(e) => setPerPage(Number(e.target.value))}
-              className="px-3 py-2 border rounded-lg text-sm"
-            >
+            <select value={perPage} onChange={(e) => setPerPage(Number(e.target.value))} className="px-3 py-2 border rounded-lg text-sm">
               <option value={12}>12</option>
               <option value={24}>24</option>
               <option value={48}>48</option>
@@ -184,14 +165,14 @@ const loadData = async () => {
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {paginatedDirs.map(dir => {
-          const hasErrors = dir.error_models > 0
-          const errorPercent = dir.total_models > 0 ? Math.round((dir.error_models / dir.total_models) * 100) : 0
+          const hasAxisErrors = (dir.axis_error_models || 0) > 0
+          const hasLevelErrors = (dir.level_error_models || 0) > 0
+          const hasErrors = hasAxisErrors || hasLevelErrors
+          const totalDirErrors = (dir.axis_error_models || 0) + (dir.level_error_models || 0)
+          const errorPercent = dir.total_models > 0 ? Math.round((totalDirErrors / dir.total_models) * 100) : 0
+          
           return (
-            <div
-              key={dir.id}
-              onClick={() => navigate(`/directory/${dir.id}`)}
-              className="bg-white rounded-lg p-4 shadow-sm border cursor-pointer hover:shadow-md transition-shadow"
-            >
+            <div key={dir.id} onClick={() => navigate(`/directory/${dir.id}`)} className="bg-white rounded-lg p-4 shadow-sm border cursor-pointer hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <h3 className="font-semibold text-gray-900 truncate flex-1">{dir.name}</h3>
                 <span className={`ml-2 w-3 h-3 rounded-full flex-shrink-0 ${hasErrors ? 'bg-yellow-400' : 'bg-green-400'}`}></span>
@@ -202,30 +183,42 @@ const loadData = async () => {
                   <span className="text-gray-500">Создана:</span>
                   <span className="text-gray-700">{new Date(dir.created_at).toLocaleDateString('ru-RU')}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Моделей:</span>
+                  <span className="text-gray-700">{dir.total_models}</span>
+                </div>
                 
+                {/* Оси */}
                 <div className="border-t pt-2 mt-2">
                   <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Оси</div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Моделей:</span>
-                    <span className="text-gray-700">{dir.total_models}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-gray-500">С ошибками:</span>
-                    <span className={dir.error_models > 0 ? 'text-red-600 font-medium' : 'text-green-600'}>{dir.error_models}</span>
+                    <span className={hasAxisErrors ? 'text-red-600 font-medium' : 'text-green-600'}>{dir.axis_error_models || 0}</span>
                   </div>
-                  {dir.total_errors > 0 && (
+                  {(dir.axis_total_errors || 0) > 0 && (
                     <div className="flex justify-between">
                       <span className="text-gray-500">Всего ошибок:</span>
-                      <span className="text-red-600">{dir.total_errors}</span>
+                      <span className="text-red-600">{dir.axis_total_errors}</span>
                     </div>
                   )}
                 </div>
 
+                {/* Уровни */}
                 <div className="border-t pt-2">
                   <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Уровни</div>
-                  <div className="text-gray-400 text-xs">Скоро</div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">С ошибками:</span>
+                    <span className={hasLevelErrors ? 'text-red-600 font-medium' : 'text-green-600'}>{dir.level_error_models || 0}</span>
+                  </div>
+                  {(dir.level_total_errors || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Всего ошибок:</span>
+                      <span className="text-red-600">{dir.level_total_errors}</span>
+                    </div>
+                  )}
                 </div>
 
+                {/* Площадки - заглушка */}
                 <div className="border-t pt-2">
                   <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Площадки</div>
                   <div className="text-gray-400 text-xs">Скоро</div>
@@ -235,7 +228,7 @@ const loadData = async () => {
               {hasErrors && (
                 <div className="mt-3 pt-3 border-t">
                   <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div className="h-1.5 rounded-full bg-red-400" style={{ width: `${errorPercent}%` }}></div>
+                    <div className="h-1.5 rounded-full bg-red-400" style={{ width: `${Math.min(errorPercent, 100)}%` }}></div>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">{errorPercent}% моделей с ошибками</div>
                 </div>
@@ -253,38 +246,12 @@ const loadData = async () => {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6 bg-white rounded-lg shadow-sm border p-4">
-          <div className="text-sm text-gray-500">
-            Страница {page} из {totalPages}
-          </div>
+          <div className="text-sm text-gray-500">Страница {page} из {totalPages}</div>
           <div className="flex gap-2">
-            <button
-              onClick={() => setPage(1)}
-              disabled={page === 1}
-              className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-gray-50"
-            >
-              «
-            </button>
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-gray-50"
-            >
-              Назад
-            </button>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-gray-50"
-            >
-              Вперед
-            </button>
-            <button
-              onClick={() => setPage(totalPages)}
-              disabled={page === totalPages}
-              className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-gray-50"
-            >
-              »
-            </button>
+            <button onClick={() => setPage(1)} disabled={page === 1} className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-gray-50">«</button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-gray-50">Назад</button>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-gray-50">Вперед</button>
+            <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-gray-50">»</button>
           </div>
         </div>
       )}

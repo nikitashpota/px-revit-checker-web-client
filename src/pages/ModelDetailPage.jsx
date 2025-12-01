@@ -4,6 +4,7 @@ import { modelsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import AxisReportSection from '../components/AxisReportSection'
 import PlaceholderSection from '../components/PlaceholderSection'
+import LevelsReportSection from '../components/LevelsReportSection'
 
 const SECTIONS = [
   { id: 'axes', name: 'Оси', icon: 'M4 6h16M4 12h16M4 18h16' },
@@ -103,7 +104,7 @@ const changeSection = (newSection) => {
         ))}
       </div>
       {section === 'axes' && <AxisReportSection modelId={modelId} />}
-      {section === 'levels' && <PlaceholderSection title="Уровни" description="Мониторинг уровней модели" icon="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />}
+      {section === 'levels' && <LevelsReportSection modelId={modelId} />}
       {section === 'sites' && <PlaceholderSection title="Площадки" description="Мониторинг площадок проекта" icon="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" />}
       {section === 'clashes' && <PlaceholderSection title="Коллизии" description="Отчет о коллизиях между элементами" icon="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />}
     </div>
