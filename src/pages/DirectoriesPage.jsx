@@ -59,6 +59,10 @@ export default function DirectoriesPage() {
           compareA = (a.axis_error_models || 0) + (a.level_error_models || 0)
           compareB = (b.axis_error_models || 0) + (b.level_error_models || 0)
           break
+        case 'clashes':
+          compareA = a.clash_active_count || 0
+          compareB = b.clash_active_count || 0
+          break
         default:
           return 0
       }
@@ -101,7 +105,7 @@ export default function DirectoriesPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Директории</h1>
       
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-lg p-4 shadow-sm border">
             <div className="text-2xl font-bold text-blue-600">{stats.total_directories}</div>
             <div className="text-sm text-gray-500">Директорий</div>
@@ -119,6 +123,10 @@ export default function DirectoriesPage() {
           <div className="bg-white rounded-lg p-4 shadow-sm border">
             <div className="text-2xl font-bold text-red-600">{totalErrors}</div>
             <div className="text-sm text-gray-500">Всего ошибок</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 shadow-sm border">
+            <div className="text-2xl font-bold text-orange-600">{stats.clash_active || 0}</div>
+            <div className="text-sm text-gray-500">Активных коллизий</div>
           </div>
         </div>
       )}
@@ -145,6 +153,7 @@ export default function DirectoriesPage() {
               <option value="date">По дате</option>
               <option value="models">По кол-ву моделей</option>
               <option value="errors">По ошибкам</option>
+              <option value="clashes">По коллизиям</option>
             </select>
             <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-50">
               {sortOrder === 'asc' ? '↑' : '↓'}
@@ -167,6 +176,7 @@ export default function DirectoriesPage() {
         {paginatedDirs.map(dir => {
           const hasAxisErrors = (dir.axis_error_models || 0) > 0
           const hasLevelErrors = (dir.level_error_models || 0) > 0
+          const hasClashes = (dir.clash_active_count || 0) > 0
           const hasErrors = hasAxisErrors || hasLevelErrors
           const totalDirErrors = (dir.axis_error_models || 0) + (dir.level_error_models || 0)
           const errorPercent = dir.total_models > 0 ? Math.round((totalDirErrors / dir.total_models) * 100) : 0
@@ -175,7 +185,7 @@ export default function DirectoriesPage() {
             <div key={dir.id} onClick={() => navigate(`/directory/${dir.id}`)} className="bg-white rounded-lg p-4 shadow-sm border cursor-pointer hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <h3 className="font-semibold text-gray-900 truncate flex-1">{dir.name}</h3>
-                <span className={`ml-2 w-3 h-3 rounded-full flex-shrink-0 ${hasErrors ? 'bg-yellow-400' : 'bg-green-400'}`}></span>
+                <span className={`ml-2 w-3 h-3 rounded-full flex-shrink-0 ${hasErrors || hasClashes ? 'bg-yellow-400' : 'bg-green-400'}`}></span>
               </div>
               
               <div className="space-y-2 text-sm">
@@ -218,6 +228,29 @@ export default function DirectoriesPage() {
                   )}
                 </div>
 
+                {/* Коллизии */}
+                <div className="border-t pt-2">
+                  <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Коллизии</div>
+                  {(dir.navisworks_files_count || 0) > 0 ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">NWF файлов:</span>
+                        <span className="text-gray-700">{dir.navisworks_files_count}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Тестов:</span>
+                        <span className="text-gray-700">{dir.clash_tests_count || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Активных:</span>
+                        <span className={hasClashes ? 'text-orange-600 font-medium' : 'text-green-600'}>{dir.clash_active_count || 0}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-gray-400 text-xs">Нет данных</div>
+                  )}
+                </div>
+
                 {/* Площадки - заглушка */}
                 <div className="border-t pt-2">
                   <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Площадки</div>
@@ -225,7 +258,7 @@ export default function DirectoriesPage() {
                 </div>
               </div>
 
-              {hasErrors && (
+              {(hasErrors || hasClashes) && (
                 <div className="mt-3 pt-3 border-t">
                   <div className="w-full bg-gray-200 rounded-full h-1.5">
                     <div className="h-1.5 rounded-full bg-red-400" style={{ width: `${Math.min(errorPercent, 100)}%` }}></div>

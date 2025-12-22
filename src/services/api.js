@@ -36,6 +36,10 @@ export const directoriesAPI = {
   getReferenceAxes: async (id) => {
     const res = await api.get(`/directories/${id}/reference-axes`)
     return res.data
+  },
+  getClashesReport: async (id) => {
+    const res = await api.get(`/directories/${id}/clashes-report`)
+    return res.data
   }
 }
 
@@ -58,6 +62,36 @@ export const modelsAPI = {
   },
   getCheckHistory: async (id) => {
     const res = await api.get(`/models/${id}/check-history`)
+    return res.data
+  }
+}
+
+export const clashesAPI = {
+  getDirectoryReport: async (directoryId) => {
+    const res = await api.get(`/directories/${directoryId}/clashes-report`)
+    return res.data
+  },
+  getHistory: async (directoryId, params = {}) => {
+    const res = await api.get(`/directories/${directoryId}/clashes-history`, { params })
+    return res.data
+  },
+  getTestsList: async (directoryId, params = {}) => {
+    const res = await api.get(`/directories/${directoryId}/clash-tests-list`, { params })
+    return res.data
+  },
+  getFileTests: async (fileId) => {
+    const res = await api.get(`/navisworks-files/${fileId}/clash-tests`)
+    return res.data
+  },
+  getTestResults: async (testId, params = {}) => {
+    const res = await api.get(`/clash-tests/${testId}/results`, { params })
+    return res.data
+  },
+  getResultImage: (resultId) => {
+    return `${API_BASE_URL}/clash-results/${resultId}/image`
+  },
+  deleteFile: async (fileId, authHeaders) => {
+    const res = await api.delete(`/navisworks-files/${fileId}`, { headers: authHeaders })
     return res.data
   }
 }
