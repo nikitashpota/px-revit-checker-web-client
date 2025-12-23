@@ -3,11 +3,59 @@ import { clashesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
+// Конвертация футов в мм
+const feetToMm = (feet) => {
+  if (!feet && feet !== 0) return null
+  return feet * 304.8
+}
+
+// Копирование в буфер
+const copyToClipboard = (text) => {
+  navigator.clipboard.writeText(text)
+}
+
+// Компонент для копируемого ID
+function CopyableId({ label, id }) {
+  const [copied, setCopied] = useState(false)
+  
+  const handleCopy = () => {
+    if (!id) return
+    copyToClipboard(id)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  
+  if (!id) return null
+  
+  return (
+    <div 
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 hover:bg-blue-100 rounded text-xs font-mono cursor-pointer transition-colors"
+      title="Нажмите чтобы скопировать"
+    >
+      <span className="text-gray-500">{label}:</span>
+      <span className="text-gray-700">{id}</span>
+      {copied ? (
+        <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      ) : (
+        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      )}
+    </div>
+  )
+}
+
 // Карточка результата коллизии с изображением
 function ClashResultCard({ clash }) {
   const [showImage, setShowImage] = useState(false)
   const [imageError, setImageError] = useState(false)
   const imageUrl = clashesAPI.getResultImage(clash.id)
+  
+  // Конвертируем distance из футов в мм
+  const distanceMm = feetToMm(clash.distance)
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-sm border">
@@ -21,8 +69,8 @@ function ClashResultCard({ clash }) {
           <span className="font-medium">{clash.name}</span>
         </div>
         <div className="flex items-center gap-2">
-          {clash.distance && (
-            <span className="text-sm text-gray-500">{clash.distance.toFixed(1)} мм</span>
+          {distanceMm !== null && (
+            <span className="text-sm text-gray-500">{distanceMm.toFixed(1)} мм</span>
           )}
           <button
             onClick={() => setShowImage(!showImage)}
@@ -63,13 +111,19 @@ function ClashResultCard({ clash }) {
 
       <div className="grid md:grid-cols-2 gap-4">
         <div className="bg-gray-50 rounded p-3">
-          <div className="text-xs text-gray-400 uppercase mb-1">Элемент 1</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs text-gray-400 uppercase">Элемент 1</div>
+            <CopyableId label="ID" id={clash.item1_id} />
+          </div>
           <div className="text-sm font-medium">{clash.item1_name || '-'}</div>
           <div className="text-xs text-gray-500">{clash.item1_type}</div>
           <div className="text-xs text-gray-400 mt-1">{clash.item1_source_file}</div>
         </div>
         <div className="bg-gray-50 rounded p-3">
-          <div className="text-xs text-gray-400 uppercase mb-1">Элемент 2</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs text-gray-400 uppercase">Элемент 2</div>
+            <CopyableId label="ID" id={clash.item2_id} />
+          </div>
           <div className="text-sm font-medium">{clash.item2_name || '-'}</div>
           <div className="text-xs text-gray-500">{clash.item2_type}</div>
           <div className="text-xs text-gray-400 mt-1">{clash.item2_source_file}</div>
@@ -109,10 +163,8 @@ function TestMultiSelect({ tests, selectedIds, onChange, sort, onSortChange }) {
       >
         <span className="text-sm">
           {selectedIds.length === 0 
-            ? 'Все проверки' 
-            : selectedIds.length === tests.length 
-              ? 'Все проверки' 
-              : `Выбрано: ${selectedIds.length} из ${tests.length}`}
+            ? 'Все проверки (общая сумма)' 
+            : `Выбрано: ${selectedIds.length} из ${tests.length}`}
         </span>
         <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -121,7 +173,6 @@ function TestMultiSelect({ tests, selectedIds, onChange, sort, onSortChange }) {
 
       {isOpen && (
         <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-96 overflow-hidden">
-          {/* Поиск */}
           <div className="p-2 border-b">
             <input
               type="text"
@@ -132,7 +183,6 @@ function TestMultiSelect({ tests, selectedIds, onChange, sort, onSortChange }) {
             />
           </div>
 
-          {/* Сортировка */}
           <div className="p-2 border-b bg-gray-50 flex gap-2">
             <select 
               value={sort.by} 
@@ -152,13 +202,11 @@ function TestMultiSelect({ tests, selectedIds, onChange, sort, onSortChange }) {
             </button>
           </div>
 
-          {/* Кнопки выбора */}
           <div className="p-2 border-b flex gap-2">
             <button onClick={selectAll} className="text-xs text-blue-600 hover:underline">Выбрать все</button>
             <button onClick={clearAll} className="text-xs text-gray-500 hover:underline">Сбросить</button>
           </div>
 
-          {/* Список */}
           <div className="max-h-64 overflow-y-auto">
             {filteredTests.map(test => {
               const isSelected = selectedIds.includes(test.id)
@@ -198,17 +246,24 @@ function TestMultiSelect({ tests, selectedIds, onChange, sort, onSortChange }) {
   )
 }
 
+// Цвета для линий графика
+const LINE_COLORS = [
+  '#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', 
+  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+  '#14b8a6', '#a855f7', '#eab308', '#0ea5e9', '#d946ef'
+]
+
 export default function ClashesReportSection({ directoryId }) {
   const [data, setData] = useState(null)
   const [tests, setTests] = useState([])
   const [history, setHistory] = useState([])
+  const [testLines, setTestLines] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedTestIds, setSelectedTestIds] = useState([])
   const [sort, setSort] = useState({ by: 'name', order: 'asc' })
   const [days, setDays] = useState(30)
   const [chartMetric, setChartMetric] = useState('active')
   
-  // Фильтры для списка тестов внизу
   const [testsSearch, setTestsSearch] = useState('')
   const [testsSort, setTestsSort] = useState({ by: 'active', order: 'desc' })
   
@@ -218,6 +273,8 @@ export default function ClashesReportSection({ directoryId }) {
   const [testResults, setTestResults] = useState(null)
   const [resultsPage, setResultsPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
+  const [minDistance, setMinDistance] = useState(0)
+  const [distanceStats, setDistanceStats] = useState(null)
   const { isAdmin, getAuthHeaders } = useAuth()
 
   useEffect(() => {
@@ -261,6 +318,7 @@ export default function ClashesReportSection({ directoryId }) {
       }
       const res = await clashesAPI.getHistory(directoryId, params)
       setHistory(res.history || [])
+      setTestLines(res.testLines || [])
     } catch (err) {
       console.error('Error loading history:', err)
     }
@@ -278,13 +336,20 @@ export default function ClashesReportSection({ directoryId }) {
     }
   }
 
-  const loadTestResults = async (testId, page = 1, status = '') => {
+  const loadTestResults = async (testId, page = 1, status = '', minDist = 0) => {
     try {
-      const res = await clashesAPI.getTestResults(testId, { page, limit: 20, status: status || undefined })
+      const res = await clashesAPI.getTestResults(testId, { 
+        page, 
+        limit: 20, 
+        status: status || undefined,
+        min_distance: minDist || undefined
+      })
       setTestResults(res)
+      setDistanceStats(res.distanceStats)
       setSelectedTest(testId)
       setResultsPage(page)
       setStatusFilter(status)
+      setMinDistance(minDist)
     } catch (err) {
       console.error('Error:', err)
     }
@@ -312,6 +377,8 @@ export default function ClashesReportSection({ directoryId }) {
     if (testResults) {
       setTestResults(null)
       setSelectedTest(null)
+      setMinDistance(0)
+      setDistanceStats(null)
     } else if (fileTests) {
       setFileTests(null)
       setSelectedFile(null)
@@ -320,6 +387,38 @@ export default function ClashesReportSection({ directoryId }) {
 
   // Подготовка данных для графика
   const chartData = useMemo(() => {
+    // Если выбраны конкретные проверки - показываем их отдельными линиями
+    if (selectedTestIds.length > 0 && testLines.length > 0) {
+      // Собираем все даты
+      const allDates = new Set()
+      testLines.forEach(test => {
+        test.data.forEach(d => allDates.add(d.date))
+      })
+      
+      // Сортируем даты
+      const sortedDates = Array.from(allDates).sort()
+      
+      // Строим данные с колонкой для каждой проверки
+      return sortedDates.map(date => {
+        const entry = {
+          date,
+          dateLabel: new Date(date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+        }
+        testLines.forEach((test, idx) => {
+          const testData = test.data.find(d => d.date === date)
+          const key = `test_${test.test_id}`
+          if (testData) {
+            entry[key] = chartMetric === 'active' ? testData.activeSum 
+              : chartMetric === 'total' ? testData.total
+              : chartMetric === 'new' ? testData.new
+              : testData.resolved
+          }
+        })
+        return entry
+      })
+    }
+    
+    // Иначе показываем общую сумму
     return history.map(h => ({
       date: h.date,
       dateLabel: new Date(h.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
@@ -329,13 +428,12 @@ export default function ClashesReportSection({ directoryId }) {
       reviewed: h.reviewed,
       resolved: h.resolved
     }))
-  }, [history])
+  }, [history, testLines, selectedTestIds, chartMetric])
 
-  // Фильтрованный и отсортированный список тестов для нижней таблицы
+  // Фильтрованный список тестов
   const filteredTests = useMemo(() => {
     let result = [...tests]
     
-    // Поиск
     if (testsSearch.trim()) {
       const s = testsSearch.toLowerCase()
       result = result.filter(t => 
@@ -344,7 +442,6 @@ export default function ClashesReportSection({ directoryId }) {
       )
     }
     
-    // Сортировка
     result.sort((a, b) => {
       let compareA, compareB
       switch (testsSort.by) {
@@ -394,6 +491,9 @@ export default function ClashesReportSection({ directoryId }) {
   // Детали теста с результатами
   if (testResults) {
     const test = testResults.test
+    const toleranceMm = feetToMm(test.tolerance)
+    const lastUpdate = test.updated_at ? new Date(test.updated_at).toLocaleString('ru-RU') : '-'
+    
     return (
       <div>
         <button onClick={goBack} className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-4">
@@ -405,32 +505,93 @@ export default function ClashesReportSection({ directoryId }) {
 
         <div className="bg-white rounded-lg p-4 shadow-sm border mb-4">
           <h3 className="font-semibold text-lg mb-2">{test.name}</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm mb-3">
             <div><span className="text-gray-500">Тип:</span> {test.test_type || '-'}</div>
-            <div><span className="text-gray-500">Допуск:</span> {test.tolerance ? `${test.tolerance} мм` : '-'}</div>
-            <div><span className="text-gray-500">Всего:</span> {test.summary_total}</div>
-            <div><span className="text-gray-500">Активных:</span> <span className="text-red-600 font-medium">{test.summary_new + test.summary_active}</span></div>
+            <div><span className="text-gray-500">Допуск:</span> {toleranceMm ? `${toleranceMm.toFixed(1)} мм` : '-'}</div>
+            <div><span className="text-gray-500">Всего:</span> <span className="font-medium">{test.summary_total}</span></div>
+            <div><span className="text-gray-500">Новых:</span> <span className="text-red-600 font-medium">{test.summary_new}</span></div>
+            <div><span className="text-gray-500">Активных:</span> <span className="text-yellow-600 font-medium">{test.summary_active}</span></div>
+            <div><span className="text-gray-500">Решено:</span> <span className="text-green-600 font-medium">{test.summary_resolved}</span></div>
+          </div>
+          <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+            <span>Последняя выгрузка: {lastUpdate}</span>
+            {distanceStats && (
+              <>
+                <span>•</span>
+                <span>Глубина: {distanceStats.min_distance_mm?.toFixed(1) || 0} – {distanceStats.max_distance_mm?.toFixed(1) || 0} мм</span>
+                <span>•</span>
+                <span>Средняя: {distanceStats.avg_distance_mm?.toFixed(1) || 0} мм</span>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
           <h4 className="font-medium">Результаты ({testResults.pagination.total})</h4>
-          <select 
-            value={statusFilter} 
-            onChange={(e) => loadTestResults(selectedTest, 1, e.target.value)}
-            className="text-sm border rounded px-2 py-1"
-          >
-            <option value="">Все статусы</option>
-            <option value="New">Новые</option>
-            <option value="Active">Активные</option>
-          </select>
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Слайдер глубины */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500 whitespace-nowrap">Глубина ≥</span>
+              <input
+                type="range"
+                min="0"
+                max="500"
+                step="20"
+                value={minDistance}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value)
+                  loadTestResults(selectedTest, 1, statusFilter, val)
+                }}
+                className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-sm font-medium w-20">{minDistance.toFixed(0)} мм</span>
+            </div>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => loadTestResults(selectedTest, 1, e.target.value, minDistance)}
+              className="text-sm border rounded px-2 py-1"
+            >
+              <option value="">Все статусы</option>
+              <option value="New">Новые</option>
+              <option value="Active">Активные</option>
+            </select>
+          </div>
         </div>
+
+        {/* Информация о фильтре */}
+        {(minDistance > 0 || statusFilter) && (
+          <div className="flex items-center gap-2 mb-4 text-sm">
+            <span className="text-gray-500">Фильтры:</span>
+            {minDistance > 0 && (
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                глубина ≥ {minDistance.toFixed(0)} мм
+              </span>
+            )}
+            {statusFilter && (
+              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded">
+                {statusFilter === 'New' ? 'Новые' : 'Активные'}
+              </span>
+            )}
+            <button
+              onClick={() => loadTestResults(selectedTest, 1, '', 0)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         <div className="space-y-2">
           {testResults.results.map(clash => (
             <ClashResultCard key={clash.id} clash={clash} />
           ))}
         </div>
+
+        {testResults.results.length === 0 && (
+          <div className="text-center py-8 text-gray-500">Нет результатов</div>
+        )}
 
         {testResults.pagination.pages > 1 && (
           <div className="flex items-center justify-between mt-4 bg-white rounded-lg shadow-sm border p-4">
@@ -439,14 +600,14 @@ export default function ClashesReportSection({ directoryId }) {
             </div>
             <div className="flex gap-2">
               <button 
-                onClick={() => loadTestResults(selectedTest, resultsPage - 1, statusFilter)} 
+                onClick={() => loadTestResults(selectedTest, resultsPage - 1, statusFilter, minDistance)} 
                 disabled={resultsPage === 1} 
                 className="px-3 py-1 border rounded text-sm disabled:opacity-50"
               >
                 Назад
               </button>
               <button 
-                onClick={() => loadTestResults(selectedTest, resultsPage + 1, statusFilter)} 
+                onClick={() => loadTestResults(selectedTest, resultsPage + 1, statusFilter, minDistance)} 
                 disabled={resultsPage === testResults.pagination.pages} 
                 className="px-3 py-1 border rounded text-sm disabled:opacity-50"
               >
@@ -476,53 +637,62 @@ export default function ClashesReportSection({ directoryId }) {
         </div>
 
         <div className="space-y-2">
-          {fileTests.tests.map(test => (
-            <div 
-              key={test.id} 
-              onClick={() => loadTestResults(test.id)}
-              className="bg-white rounded-lg p-4 shadow-sm border cursor-pointer hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-2">
-                <h4 className="font-medium">{test.name}</h4>
-                <span className={`px-2 py-0.5 rounded text-xs ${
-                  (test.summary_new + test.summary_active) > 0 
-                    ? 'bg-red-100 text-red-700' 
-                    : 'bg-green-100 text-green-700'
-                }`}>
-                  {test.summary_new + test.summary_active > 0 
-                    ? `${test.summary_new + test.summary_active} активных` 
-                    : 'Нет активных'}
-                </span>
+          {fileTests.tests.map(test => {
+            const toleranceMm = feetToMm(test.tolerance)
+            return (
+              <div 
+                key={test.id} 
+                onClick={() => loadTestResults(test.id)}
+                className="bg-white rounded-lg p-4 shadow-sm border cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-medium">{test.name}</h4>
+                  <span className={`px-2 py-0.5 rounded text-xs ${
+                    (test.summary_new + test.summary_active) > 0 
+                      ? 'bg-red-100 text-red-700' 
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {test.summary_new + test.summary_active > 0 
+                      ? `${test.summary_new + test.summary_active} активных` 
+                      : 'Нет активных'}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-sm">
+                  <div className="text-center p-2 bg-gray-50 rounded">
+                    <div className="text-lg font-bold text-gray-900">{test.summary_total}</div>
+                    <div className="text-xs text-gray-500">Всего</div>
+                  </div>
+                  <div className="text-center p-2 bg-red-50 rounded">
+                    <div className="text-lg font-bold text-red-600">{test.summary_new}</div>
+                    <div className="text-xs text-gray-500">Новых</div>
+                  </div>
+                  <div className="text-center p-2 bg-yellow-50 rounded">
+                    <div className="text-lg font-bold text-yellow-600">{test.summary_active}</div>
+                    <div className="text-xs text-gray-500">Активных</div>
+                  </div>
+                  <div className="text-center p-2 bg-blue-50 rounded">
+                    <div className="text-lg font-bold text-blue-600">{test.summary_reviewed}</div>
+                    <div className="text-xs text-gray-500">На проверке</div>
+                  </div>
+                  <div className="text-center p-2 bg-purple-50 rounded">
+                    <div className="text-lg font-bold text-purple-600">{test.summary_approved}</div>
+                    <div className="text-xs text-gray-500">Одобрено</div>
+                  </div>
+                  <div className="text-center p-2 bg-green-50 rounded">
+                    <div className="text-lg font-bold text-green-600">{test.summary_resolved}</div>
+                    <div className="text-xs text-gray-500">Решено</div>
+                  </div>
+                </div>
+
+                {test.test_type && (
+                  <div className="mt-2 text-xs text-gray-400">
+                    Тип: {test.test_type} {toleranceMm && `• Допуск: ${toleranceMm.toFixed(1)} мм`}
+                  </div>
+                )}
               </div>
-              
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-sm">
-                <div className="text-center p-2 bg-gray-50 rounded">
-                  <div className="text-lg font-bold text-gray-900">{test.summary_total}</div>
-                  <div className="text-xs text-gray-500">Всего</div>
-                </div>
-                <div className="text-center p-2 bg-red-50 rounded">
-                  <div className="text-lg font-bold text-red-600">{test.summary_new}</div>
-                  <div className="text-xs text-gray-500">Новых</div>
-                </div>
-                <div className="text-center p-2 bg-yellow-50 rounded">
-                  <div className="text-lg font-bold text-yellow-600">{test.summary_active}</div>
-                  <div className="text-xs text-gray-500">Активных</div>
-                </div>
-                <div className="text-center p-2 bg-blue-50 rounded">
-                  <div className="text-lg font-bold text-blue-600">{test.summary_reviewed}</div>
-                  <div className="text-xs text-gray-500">На проверке</div>
-                </div>
-                <div className="text-center p-2 bg-purple-50 rounded">
-                  <div className="text-lg font-bold text-purple-600">{test.summary_approved}</div>
-                  <div className="text-xs text-gray-500">Одобрено</div>
-                </div>
-                <div className="text-center p-2 bg-green-50 rounded">
-                  <div className="text-lg font-bold text-green-600">{test.summary_resolved}</div>
-                  <div className="text-xs text-gray-500">Решено</div>
-                </div>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {fileTests.tests.length === 0 && (
@@ -620,45 +790,65 @@ export default function ClashesReportSection({ directoryId }) {
                 labelFormatter={(label) => `Дата: ${label}`}
               />
               <Legend />
-              {chartMetric === 'active' && (
-                <Line 
-                  type="monotone" 
-                  dataKey="active" 
-                  name="Активных" 
-                  stroke="#ef4444" 
-                  strokeWidth={2}
-                  dot={{ fill: '#ef4444', strokeWidth: 2 }}
-                />
-              )}
-              {chartMetric === 'total' && (
-                <Line 
-                  type="monotone" 
-                  dataKey="total" 
-                  name="Всего" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2}
-                  dot={{ fill: '#3b82f6', strokeWidth: 2 }}
-                />
-              )}
-              {chartMetric === 'new' && (
-                <Line 
-                  type="monotone" 
-                  dataKey="new" 
-                  name="Новых" 
-                  stroke="#f59e0b" 
-                  strokeWidth={2}
-                  dot={{ fill: '#f59e0b', strokeWidth: 2 }}
-                />
-              )}
-              {chartMetric === 'resolved' && (
-                <Line 
-                  type="monotone" 
-                  dataKey="resolved" 
-                  name="Решённых" 
-                  stroke="#22c55e" 
-                  strokeWidth={2}
-                  dot={{ fill: '#22c55e', strokeWidth: 2 }}
-                />
+              
+              {/* Если выбраны конкретные проверки - показываем их линии */}
+              {selectedTestIds.length > 0 ? (
+                testLines.map((test, idx) => (
+                  <Line
+                    key={test.test_id}
+                    type="monotone"
+                    dataKey={`test_${test.test_id}`}
+                    name={test.test_name.length > 30 ? test.test_name.substring(0, 30) + '...' : test.test_name}
+                    stroke={LINE_COLORS[idx % LINE_COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ fill: LINE_COLORS[idx % LINE_COLORS.length], strokeWidth: 2, r: 3 }}
+                    connectNulls
+                  />
+                ))
+              ) : (
+                /* Иначе показываем общую линию */
+                <>
+                  {chartMetric === 'active' && (
+                    <Line 
+                      type="monotone" 
+                      dataKey="active" 
+                      name="Активных" 
+                      stroke="#ef4444" 
+                      strokeWidth={2}
+                      dot={{ fill: '#ef4444', strokeWidth: 2 }}
+                    />
+                  )}
+                  {chartMetric === 'total' && (
+                    <Line 
+                      type="monotone" 
+                      dataKey="total" 
+                      name="Всего" 
+                      stroke="#3b82f6" 
+                      strokeWidth={2}
+                      dot={{ fill: '#3b82f6', strokeWidth: 2 }}
+                    />
+                  )}
+                  {chartMetric === 'new' && (
+                    <Line 
+                      type="monotone" 
+                      dataKey="new" 
+                      name="Новых" 
+                      stroke="#f59e0b" 
+                      strokeWidth={2}
+                      dot={{ fill: '#f59e0b', strokeWidth: 2 }}
+                    />
+                  )}
+                  {chartMetric === 'resolved' && (
+                    <Line 
+                      type="monotone" 
+                      dataKey="resolved" 
+                      name="Решённых" 
+                      stroke="#22c55e" 
+                      strokeWidth={2}
+                      dot={{ fill: '#22c55e', strokeWidth: 2 }}
+                    />
+                  )}
+                </>
               )}
             </LineChart>
           </ResponsiveContainer>
@@ -689,7 +879,7 @@ export default function ClashesReportSection({ directoryId }) {
         </div>
       </div>
 
-      {/* Список всех тестов с фильтрацией и сортировкой */}
+      {/* Список всех тестов */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="p-4 border-b">
           <div className="flex flex-col md:flex-row gap-4">
