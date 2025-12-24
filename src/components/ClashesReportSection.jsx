@@ -246,18 +246,10 @@ function TestMultiSelect({ tests, selectedIds, onChange, sort, onSortChange }) {
   )
 }
 
-// Цвета для линий графика
-const LINE_COLORS = [
-  '#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', 
-  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-  '#14b8a6', '#a855f7', '#eab308', '#0ea5e9', '#d946ef'
-]
-
 export default function ClashesReportSection({ directoryId }) {
   const [data, setData] = useState(null)
   const [tests, setTests] = useState([])
   const [history, setHistory] = useState([])
-  const [testLines, setTestLines] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedTestIds, setSelectedTestIds] = useState([])
   const [sort, setSort] = useState({ by: 'name', order: 'asc' })
@@ -318,7 +310,6 @@ export default function ClashesReportSection({ directoryId }) {
       }
       const res = await clashesAPI.getHistory(directoryId, params)
       setHistory(res.history || [])
-      setTestLines(res.testLines || [])
     } catch (err) {
       console.error('Error loading history:', err)
     }
@@ -387,38 +378,7 @@ export default function ClashesReportSection({ directoryId }) {
 
   // Подготовка данных для графика
   const chartData = useMemo(() => {
-    // Если выбраны конкретные проверки - показываем их отдельными линиями
-    if (selectedTestIds.length > 0 && testLines.length > 0) {
-      // Собираем все даты
-      const allDates = new Set()
-      testLines.forEach(test => {
-        test.data.forEach(d => allDates.add(d.date))
-      })
-      
-      // Сортируем даты
-      const sortedDates = Array.from(allDates).sort()
-      
-      // Строим данные с колонкой для каждой проверки
-      return sortedDates.map(date => {
-        const entry = {
-          date,
-          dateLabel: new Date(date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
-        }
-        testLines.forEach((test, idx) => {
-          const testData = test.data.find(d => d.date === date)
-          const key = `test_${test.test_id}`
-          if (testData) {
-            entry[key] = chartMetric === 'active' ? testData.activeSum 
-              : chartMetric === 'total' ? testData.total
-              : chartMetric === 'new' ? testData.new
-              : testData.resolved
-          }
-        })
-        return entry
-      })
-    }
-    
-    // Иначе показываем общую сумму
+    // Всегда показываем общую сумму (всех или выбранных проверок)
     return history.map(h => ({
       date: h.date,
       dateLabel: new Date(h.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
@@ -428,7 +388,7 @@ export default function ClashesReportSection({ directoryId }) {
       reviewed: h.reviewed,
       resolved: h.resolved
     }))
-  }, [history, testLines, selectedTestIds, chartMetric])
+  }, [history])
 
   // Фильтрованный список тестов
   const filteredTests = useMemo(() => {
@@ -791,64 +751,46 @@ export default function ClashesReportSection({ directoryId }) {
               />
               <Legend />
               
-              {/* Если выбраны конкретные проверки - показываем их линии */}
-              {selectedTestIds.length > 0 ? (
-                testLines.map((test, idx) => (
-                  <Line
-                    key={test.test_id}
-                    type="monotone"
-                    dataKey={`test_${test.test_id}`}
-                    name={test.test_name.length > 30 ? test.test_name.substring(0, 30) + '...' : test.test_name}
-                    stroke={LINE_COLORS[idx % LINE_COLORS.length]}
-                    strokeWidth={2}
-                    dot={{ fill: LINE_COLORS[idx % LINE_COLORS.length], strokeWidth: 2, r: 3 }}
-                    connectNulls
-                  />
-                ))
-              ) : (
-                /* Иначе показываем общую линию */
-                <>
-                  {chartMetric === 'active' && (
-                    <Line 
-                      type="monotone" 
-                      dataKey="active" 
-                      name="Активных" 
-                      stroke="#ef4444" 
-                      strokeWidth={2}
-                      dot={{ fill: '#ef4444', strokeWidth: 2 }}
-                    />
-                  )}
-                  {chartMetric === 'total' && (
-                    <Line 
-                      type="monotone" 
-                      dataKey="total" 
-                      name="Всего" 
-                      stroke="#3b82f6" 
-                      strokeWidth={2}
-                      dot={{ fill: '#3b82f6', strokeWidth: 2 }}
-                    />
-                  )}
-                  {chartMetric === 'new' && (
-                    <Line 
-                      type="monotone" 
-                      dataKey="new" 
-                      name="Новых" 
-                      stroke="#f59e0b" 
-                      strokeWidth={2}
-                      dot={{ fill: '#f59e0b', strokeWidth: 2 }}
-                    />
-                  )}
-                  {chartMetric === 'resolved' && (
-                    <Line 
-                      type="monotone" 
-                      dataKey="resolved" 
-                      name="Решённых" 
-                      stroke="#22c55e" 
-                      strokeWidth={2}
-                      dot={{ fill: '#22c55e', strokeWidth: 2 }}
-                    />
-                  )}
-                </>
+              {/* Одна линия с выбранной метрикой */}
+              {chartMetric === 'active' && (
+                <Line 
+                  type="monotone" 
+                  dataKey="active" 
+                  name="Активных" 
+                  stroke="#ef4444" 
+                  strokeWidth={2}
+                  dot={{ fill: '#ef4444', strokeWidth: 2 }}
+                />
+              )}
+              {chartMetric === 'total' && (
+                <Line 
+                  type="monotone" 
+                  dataKey="total" 
+                  name="Всего" 
+                  stroke="#3b82f6" 
+                  strokeWidth={2}
+                  dot={{ fill: '#3b82f6', strokeWidth: 2 }}
+                />
+              )}
+              {chartMetric === 'new' && (
+                <Line 
+                  type="monotone" 
+                  dataKey="new" 
+                  name="Новых" 
+                  stroke="#f59e0b" 
+                  strokeWidth={2}
+                  dot={{ fill: '#f59e0b', strokeWidth: 2 }}
+                />
+              )}
+              {chartMetric === 'resolved' && (
+                <Line 
+                  type="monotone" 
+                  dataKey="resolved" 
+                  name="Решённых" 
+                  stroke="#22c55e" 
+                  strokeWidth={2}
+                  dot={{ fill: '#22c55e', strokeWidth: 2 }}
+                />
               )}
             </LineChart>
           </ResponsiveContainer>
