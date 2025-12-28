@@ -382,10 +382,8 @@ export default function ClashesReportSection({ directoryId }) {
     return history.map(h => ({
       date: h.date,
       dateLabel: new Date(h.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
-      total: h.total,
       active: h.new + h.active,
       new: h.new,
-      reviewed: h.reviewed,
       resolved: h.resolved
     }))
   }, [history])
@@ -420,10 +418,6 @@ export default function ClashesReportSection({ directoryId }) {
         case 'new':
           compareA = a.summary_new
           compareB = b.summary_new
-          break
-        case 'resolved':
-          compareA = a.summary_resolved
-          compareB = b.summary_resolved
           break
         default:
           return 0
@@ -465,13 +459,12 @@ export default function ClashesReportSection({ directoryId }) {
 
         <div className="bg-white rounded-lg p-4 shadow-sm border mb-4">
           <h3 className="font-semibold text-lg mb-2">{test.name}</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm mb-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm mb-3">
             <div><span className="text-gray-500">Тип:</span> {test.test_type || '-'}</div>
             <div><span className="text-gray-500">Допуск:</span> {toleranceMm ? `${toleranceMm.toFixed(1)} мм` : '-'}</div>
             <div><span className="text-gray-500">Всего:</span> <span className="font-medium">{test.summary_total}</span></div>
             <div><span className="text-gray-500">Новых:</span> <span className="text-red-600 font-medium">{test.summary_new}</span></div>
             <div><span className="text-gray-500">Активных:</span> <span className="text-yellow-600 font-medium">{test.summary_active}</span></div>
-            <div><span className="text-gray-500">Решено:</span> <span className="text-green-600 font-medium">{test.summary_resolved}</span></div>
           </div>
           <div className="flex flex-wrap gap-4 text-xs text-gray-400">
             <span>Последняя выгрузка: {lastUpdate}</span>
@@ -618,7 +611,7 @@ export default function ClashesReportSection({ directoryId }) {
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-sm">
+                <div className="grid grid-cols-3 gap-2 text-sm">
                   <div className="text-center p-2 bg-gray-50 rounded">
                     <div className="text-lg font-bold text-gray-900">{test.summary_total}</div>
                     <div className="text-xs text-gray-500">Всего</div>
@@ -630,18 +623,6 @@ export default function ClashesReportSection({ directoryId }) {
                   <div className="text-center p-2 bg-yellow-50 rounded">
                     <div className="text-lg font-bold text-yellow-600">{test.summary_active}</div>
                     <div className="text-xs text-gray-500">Активных</div>
-                  </div>
-                  <div className="text-center p-2 bg-blue-50 rounded">
-                    <div className="text-lg font-bold text-blue-600">{test.summary_reviewed}</div>
-                    <div className="text-xs text-gray-500">На проверке</div>
-                  </div>
-                  <div className="text-center p-2 bg-purple-50 rounded">
-                    <div className="text-lg font-bold text-purple-600">{test.summary_approved}</div>
-                    <div className="text-xs text-gray-500">Одобрено</div>
-                  </div>
-                  <div className="text-center p-2 bg-green-50 rounded">
-                    <div className="text-lg font-bold text-green-600">{test.summary_resolved}</div>
-                    <div className="text-xs text-gray-500">Решено</div>
                   </div>
                 </div>
 
@@ -707,10 +688,9 @@ export default function ClashesReportSection({ directoryId }) {
                 onChange={(e) => setChartMetric(e.target.value)}
                 className="px-3 py-1.5 border rounded text-sm"
               >
-                <option value="active">Активные (New + Active)</option>
-                <option value="total">Всего</option>
-                <option value="new">Только новые</option>
-                <option value="resolved">Решённые</option>
+                <option value="active">Активные</option>
+                <option value="new">Новые</option>
+                <option value="resolved">Решено</option>
               </select>
             </div>
           </div>
@@ -762,16 +742,6 @@ export default function ClashesReportSection({ directoryId }) {
                   dot={{ fill: '#ef4444', strokeWidth: 2 }}
                 />
               )}
-              {chartMetric === 'total' && (
-                <Line 
-                  type="monotone" 
-                  dataKey="total" 
-                  name="Всего" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2}
-                  dot={{ fill: '#3b82f6', strokeWidth: 2 }}
-                />
-              )}
               {chartMetric === 'new' && (
                 <Line 
                   type="monotone" 
@@ -786,7 +756,7 @@ export default function ClashesReportSection({ directoryId }) {
                 <Line 
                   type="monotone" 
                   dataKey="resolved" 
-                  name="Решённых" 
+                  name="Решено" 
                   stroke="#22c55e" 
                   strokeWidth={2}
                   dot={{ fill: '#22c55e', strokeWidth: 2 }}
@@ -802,7 +772,7 @@ export default function ClashesReportSection({ directoryId }) {
       </div>
 
       {/* Статусы */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-red-50 rounded-lg p-3 text-center">
           <div className="text-xl font-bold text-red-600">{data.new_clashes}</div>
           <div className="text-xs text-gray-500">Новых</div>
@@ -810,14 +780,6 @@ export default function ClashesReportSection({ directoryId }) {
         <div className="bg-yellow-50 rounded-lg p-3 text-center">
           <div className="text-xl font-bold text-yellow-600">{data.active_clashes}</div>
           <div className="text-xs text-gray-500">Активных</div>
-        </div>
-        <div className="bg-purple-50 rounded-lg p-3 text-center">
-          <div className="text-xl font-bold text-purple-600">{data.reviewed_clashes + data.approved_clashes}</div>
-          <div className="text-xs text-gray-500">На проверке</div>
-        </div>
-        <div className="bg-green-50 rounded-lg p-3 text-center">
-          <div className="text-xl font-bold text-green-600">{data.resolved_clashes}</div>
-          <div className="text-xs text-gray-500">Решено</div>
         </div>
       </div>
 
@@ -850,7 +812,6 @@ export default function ClashesReportSection({ directoryId }) {
                 <option value="total">По всего</option>
                 <option value="active">По активным</option>
                 <option value="new">По новым</option>
-                <option value="resolved">По решённым</option>
               </select>
               <button 
                 onClick={() => setTestsSort({ ...testsSort, order: testsSort.order === 'asc' ? 'desc' : 'asc' })}
@@ -891,10 +852,6 @@ export default function ClashesReportSection({ directoryId }) {
                         {activeCount}
                       </div>
                       <div className="text-xs text-gray-400">активн.</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-bold text-green-600">{test.summary_resolved}</div>
-                      <div className="text-xs text-gray-400">решено</div>
                     </div>
                     <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
